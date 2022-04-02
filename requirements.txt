@@ -1,0 +1,12 @@
+confluent_kafka==1.8.2
+fastapi==0.75.1
+fastapi_jwt_auth==0.5.0
+fastapi_mail==1.0.6
+jose==1.0.0
+nest_asyncio==1.5.4
+passlib==1.7.2
+pydantic==1.9.0
+pydantic_choices==0.1.1
+python-dotenv==0.20.0
+SQLAlchemy==1.4.27
+uvicorn==0.17.6
