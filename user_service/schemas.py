@@ -115,6 +115,33 @@ class UserBase(BaseModel):
     password: str = Field(..., example="password123")
 
 
+class UserPhoneBase(BaseModel):
+    phone: constr(min_length=10, max_length=15)
+
+    @validator("phone")
+    def phone_validation(cls, v):
+        regex = r"^(\+)[1-9][0-9\-\(\)\.]{9,15}$"
+        if v and not re.search(regex, v, re.I):
+            raise ValueError("Phone Number Invalid.")
+        return v
+    password: str = Field(..., example="password123")
+
+
+class UserEmailBase(BaseModel):
+    email: EmailStr
+
+
+class UserEmail(UserEmailBase):
+    class Config():
+        orm_mode = True
+
+
+class UserPhone(UserPhoneBase):
+
+    class Config():
+        orm_mode = True
+
+
 class User(UserBase):
 
     class Config():

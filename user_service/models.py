@@ -18,7 +18,9 @@ class User(Base):
 
     password = Column(String(5))
 
-    is_verified = Column(Boolean, default=False)
+    is_phone_verified = Column(Boolean, default=False)
+
+    is_email_verified = Column(Boolean, default=False)
 
     user_details = relationship("UserDetails", back_populates="user")
 

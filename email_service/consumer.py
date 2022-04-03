@@ -47,5 +47,14 @@ while True:
         )
         )
         print("Email Sent!")
+
+    elif obj['type'] == 'VerifiedEmail':
+        asyncio.run(send_mail.send_confirm_email(
+            subject="OTP Verified",
+            email_to=obj['email'],
+        )
+        )
+        print("Email Sent!")
+
     else:
         print("Error")
