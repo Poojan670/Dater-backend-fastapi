@@ -50,8 +50,6 @@ class UserDetailsBase(BaseModel):
 
     living_in: str
 
-    user_id: str
-
 
 class UserDetails(UserDetailsBase):
 
@@ -64,6 +62,11 @@ class ShowItem(UserDetailsBase):
     user_id: str
 
     class Config:
+        orm_mode = True
+
+
+class ShowUserDetailsBase(UserDetailsBase):
+    class Config():
         orm_mode = True
 
 
@@ -102,7 +105,57 @@ class Image(BaseModel):
         orm_mode = True
 
 
+class LocationBase(BaseModel):
+    longitude: float
+    latitude: float
+    location_name: constr(min_length=3, max_length=100)
+
+    class Config():
+        orm_mode = True
+
+
+class Friends(BaseModel):
+    friends: str
+
+    class Config:
+        orm_mode = True
+
+
+class AllLocation(BaseModel):
+    id: str
+
+    class Config():
+        orm_mode = True
+
+
+class ReportBase(BaseModel):
+    report_to_id: str
+    report_reason: str
+
+    class Config():
+        orm_mode = True
+
+
+class ReportList(BaseModel):
+    id: str
+
+    class Config():
+        orm_mode = True
+
+
+class LikesList(BaseModel):
+    liked_by: list
+
+
+class Likes(BaseModel):
+    likes: List[LikesList] = []
+
+    class Config():
+        orm_mode = True
+
+
 class UserBase(BaseModel):
+    role: str
     email: EmailStr
     phone: constr(min_length=10, max_length=15)
 
@@ -156,14 +209,39 @@ class UserAuth(BaseModel):
 class ShowUser(BaseModel):
 
     id: str
-    email: str
+    email: Optional[str] = None
     phone: str
 
-    is_verified: bool
+    is_phone_verified: bool
+    is_email_verified: bool
 
-    user_details: List[ShowItem] = []
+    class Config():
+        orm_mode = True
 
+
+class ShowUserDetails(BaseModel):
+    user_details: List[ShowUserDetailsBase] = []
+
+    class Config():
+        orm_mode = True
+
+
+class ShowImageList(BaseModel):
     image_user: List[Image] = []
+
+    class Config():
+        orm_mode = True
+
+
+class ShowUserLocation(BaseModel):
+    location: List[LocationBase] = []
+
+    class Config():
+        orm_mode = True
+
+
+class ShowFriendsList(BaseModel):
+    location: List[LocationBase] = []
 
     class Config():
         orm_mode = True
@@ -187,7 +265,7 @@ class Token(BaseModel):
 
 
 class TokenData(BaseModel):
-    username: str
+    phone: str
 
 
 class CreateOTP(BaseModel):
@@ -200,3 +278,6 @@ class VerifyOTP(BaseModel):
 
 class OTPList(VerifyOTP):
     otp_failed_count: str
+
+class DeleteFriends(BaseModel):
+    friend_id : str

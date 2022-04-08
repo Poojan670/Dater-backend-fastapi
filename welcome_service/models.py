@@ -1,7 +1,8 @@
 import uuid
-from database import Base
-from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, Text, Table
+from .database import Base
+from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, Text, Table, DateTime
 from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
 
 
 class ImageWelcomeModel(Base):
@@ -17,6 +18,10 @@ class ImageWelcomeModel(Base):
 
     image_url = Column(String(100))
 
+    time_created = Column(DateTime(timezone=True), server_default=func.now())
+
+    time_updated = Column(DateTime(timezone=True), onupdate=func.now())
+
 
 class WelcomeModel(Base):
     __tablename__ = 'welcome'
@@ -31,6 +36,10 @@ class WelcomeModel(Base):
     sub_description = Column(String(60))
 
     image_welcome = relationship("ImageWelcomeModel", back_populates="welcome")
+
+    time_created = Column(DateTime(timezone=True), server_default=func.now())
+
+    time_updated = Column(DateTime(timezone=True), onupdate=func.now())
 
 
 ImageWelcomeModel.welcome = relationship(

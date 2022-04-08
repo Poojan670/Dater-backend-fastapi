@@ -32,7 +32,7 @@ def send_otp(
         models.OtpModel.recipient_id == recipient_id).first()
 
     if pre_otp is not None:
-        pre_otp.delete(synchronize_session=False)
+        db.delete(pre_otp)
         db.commit()
 
     otp_code = otp.random(6)
@@ -99,7 +99,7 @@ def resend_otp(
         models.OtpModel.recipient_id == recipient_id).first()
 
     if pre_otp is not None:
-        pre_otp.delete(synchronize_session=False)
+        db.delete(pre_otp)
         db.commit()
 
     if user is None:
@@ -312,3 +312,62 @@ async def verify_email(
                     f"Error occured while deleting otp model db")
 
             return "Otp Verified Successfully!"
+
+
+def forgot_password(
+    type,
+    recipient_id,
+    email: EmailStr,
+    db: Session = Depends(get_db)
+):
+
+    pre_otp = db.query(models.OtpModel).filter(
+        models.OtpModel.recipient_id == recipient_id).first()
+
+    if pre_otp is not None:
+        db.delete(pre_otp)
+        db.commit()
+
+    otp_code = otp.random(6)
+    otp_object = models.OtpModel(otp_code=otp_code,
+                                 recipient_id=recipient_id,
+                                 created_on=datetime.now(),
+                                 expiry_time=datetime.now() + timedelta(minutes=5))
+    db.add(otp_object)
+    db.commit()
+    db.refresh(otp_object)
+
+    if type == 'Phone':
+
+        print("Integrate with SMS")
+
+        print(otp_code)
+
+        return {
+            "recipient_id": otp_object.recipient_id,
+            "otp_code": otp_object.otp_code,
+        }
+
+    else:
+        print("Send via email")
+
+        try:
+
+            producer = SendEmailProducer()
+            email_obj = {
+                "type": "SendEmailPasswordReset",
+                "email": email,
+                "otp": otp_code,
+                "user_id": recipient_id
+            }
+            producer.send_msg_async(json.dumps(email_obj))
+
+        except RuntimeError as e:
+            print(str(e))
+
+        print(otp_code)
+
+        return {
+            "recipient_id": otp_object.recipient_id,
+            "otp_code": otp_object.otp_code,
+        }

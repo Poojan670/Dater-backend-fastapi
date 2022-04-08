@@ -31,14 +31,34 @@ async def send_email_async(subject: str, email_to: str, body: dict):
     await fm.send_message(message, template_name="email_template.html")
 
 
-async def send_confirm_email(subject: str, email_to: str):
+async def send_confirm_email(subject: str, email_to: str, body: dict):
     message = MessageSchema(
         subject=subject,
         recipients=[email_to],
-        template_body="",
+        template_body=body,
     )
     fm = FastMail(conf)
     await fm.send_message(message, template_name="success_template.html")
+
+
+async def forgot_password_mail(subject: str, email_to: str, body: dict):
+    message = MessageSchema(
+        subject=subject,
+        recipients=[email_to],
+        template_body=body,
+    )
+    fm = FastMail(conf)
+    await fm.send_message(message, template_name="forgot_password.html")
+
+
+async def reset_password_success(subject: str, email_to: str, body: dict):
+    message = MessageSchema(
+        subject=subject,
+        recipients=[email_to],
+        template_body=body,
+    )
+    fm = FastMail(conf)
+    await fm.send_message(message, template_name="password_reset_confirm.html")
 
 
 def send_email_background(background_tasks: BackgroundTasks, subject: str, email_to: str, body: dict):

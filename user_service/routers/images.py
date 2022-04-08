@@ -1,13 +1,15 @@
 import asyncio
-import os
+import base64
 from fastapi import APIRouter, File, UploadFile, Depends, Response, HTTPException, status
-from typing import List
+import jwt
 import database
 import schemas
 from sqlalchemy.orm import Session
 import models
-import shutil
 from .oauth2 import get_current_user
+from .producer import SendImageProducer
+import json
+from roles import *
 
 router = APIRouter(
     prefix='/images',
@@ -24,15 +26,34 @@ def save_file(filename, data):
 
 @router.post("/")
 async def upload_user_image(file: UploadFile = File(...),
-                            db: Session = Depends(get_db)):
+                            db: Session = Depends(get_db),
+                            current_user: schemas.User = Depends(get_current_user)):
 
-    file_location = f"media/{file.filename}"
+    user_check = db.query(models.User).filter(
+        models.User.id == current_user['user_id']).first()
+    if user_check is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=f"User not Found!")
 
-    with open(file_location, "wb+") as file_object:
-        shutil.copyfileobj(file.file, file_object)
+    # file_location = f"media/{file.filename}"
 
-    object = models.ImagesModel(image=file_location,
-                                user_image_id="ea0bc52f-ae56-49f6-8451-c32a53d33857")
+    # with open(file_location, "wb+") as file_object:
+    #     shutil.copyfileobj(file.file, file_object)
+
+    data = await file.read()
+    encoded_image = base64.b64encode(data).decode()
+
+    producer = SendImageProducer()
+
+    image_obj = {"title": "Uploading User Image",
+                 "id": current_user['user_id'],
+                 "image": encoded_image,
+                 "type": "Image"}
+
+    producer.send_msg_async(json.dumps(
+        image_obj, ensure_ascii=False, indent=4))
+
+    object = models.ImagesModel(user_image_id=current_user['user_id'])
 
     db.add(object)
     db.commit()
@@ -42,26 +63,48 @@ async def upload_user_image(file: UploadFile = File(...),
 
 
 @router.post("/list")
-async def upload_image_list(files: List[UploadFile] = File(...), db: Session = Depends(get_db)):
+async def upload_image_list(files: List[UploadFile] = File(...),
+                            db: Session = Depends(get_db),
+                            current_user: schemas.User = Depends(get_current_user)):
+
+    user_check = db.query(models.User).filter(
+        models.User.id == current_user['user_id']).first()
+    if user_check is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=f"User not Found!")
 
     for file in files:
-        file_location = f"media/{file.filename}"
+        # file_location = f"media/{file.filename}"
 
-        with open(file_location, "wb+") as file_object:
-            shutil.copyfileobj(file.file, file_object)
+        # with open(file_location, "wb+") as file_object:
+        #     shutil.copyfileobj(file.file, file_object)
 
-        object = models.ImagesModel(image=file_location,
-                                    user_image_id="fa269bb7-9751-4151-b8ef-f0b6f448103b")
+        data = await file.read()
+        encoded_image = base64.b64encode(data).decode()
+
+        producer = SendImageProducer()
+
+        image_obj = {"title": "Uploading User Image",
+                     "id": current_user['user_id'],
+                     "image": encoded_image,
+                     "type": "Image"}
+
+        producer.send_msg_async(json.dumps(
+            image_obj, ensure_ascii=False, indent=4))
+
+        object = models.ImagesModel(user_image_id=current_user['user_id'])
 
         db.add(object)
         db.commit()
         db.refresh(object)
 
-    return {"Uploaded Filenames": [file.filename for file in files]}
+    return 'Uploaded Successfully!'
 
 
 @router.get("/all", response_model=List[schemas.ShowImageId])
-async def all_images(db: Session = Depends(get_db), current_user: schemas.User = Depends(get_current_user)):
+async def all_images(db: Session = Depends(get_db),
+                     dependencies=Depends(allow_create_resource)):
+
     objects = db.query(models.ImagesModel).all()
     await asyncio.sleep(0.5)
     return objects
@@ -72,6 +115,7 @@ async def retrieve_image(id,
                          response: Response,
                          db: Session = Depends(get_db),
                          current_user: schemas.User = Depends(get_current_user)):
+
     object = db.query(models.ImagesModel).filter(
         models.ImagesModel.id == id).first()
     if not object:
@@ -82,7 +126,9 @@ async def retrieve_image(id,
 
 
 @router.delete('/{id}', status_code=status.HTTP_204_NO_CONTENT)
-async def destroy(id, db: Session = Depends(get_db), current_user: schemas.User = Depends(get_current_user)):
+async def destroy(id,
+                  db: Session = Depends(get_db),
+                  current_user: schemas.User = Depends(get_current_user)):
     object = db.query(models.ImagesModel).filter(
         models.ImagesModel.id == id)
 
@@ -91,9 +137,6 @@ async def destroy(id, db: Session = Depends(get_db), current_user: schemas.User 
             status_code=status.HTTP_404_NOT_FOUND, detail=f"Image Object with this {id} not found")
 
     await asyncio.sleep(0.5)
-    file_location = object.first().image
-
-    os.remove(file_location)
 
     object.delete(synchronize_session=False)
     db.commit()
@@ -102,7 +145,6 @@ async def destroy(id, db: Session = Depends(get_db), current_user: schemas.User 
 
 @router.put('/{id}', status_code=status.HTTP_202_ACCEPTED)
 async def update_image(id,
-                       response: Response,
                        db: Session = Depends(get_db),
                        file: UploadFile = File(...),
                        current_user: schemas.User = Depends(get_current_user)):
@@ -115,21 +157,23 @@ async def update_image(id,
 
     await asyncio.sleep(0.5)
 
-    pre_file_location = object.first().image
+    data = await file.read()
+    encoded_image = base64.b64encode(data).decode()
 
-    try:
-        os.remove(pre_file_location)
-    except Exception as e:
-        print(str(e))
+    producer = SendImageProducer()
 
-    file_location = f"media/{file.filename}"
+    image_obj = {"title": "Uploading User Image",
+                 "id": current_user['user_id'],
+                 "image": encoded_image,
+                 "type": "Image"}
 
-    with open(file_location, "wb+") as file_object:
-        shutil.copyfileobj(file.file, file_object)
+    producer.send_msg_async(json.dumps(
+        image_obj, ensure_ascii=False, indent=4))
 
-    object.update(dict(image=file_location))
+    object.update(dict(image=None))
 
     db.commit()
 
     await asyncio.sleep(0.5)
+
     return 'Updated Successfully'

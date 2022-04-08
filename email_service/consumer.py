@@ -52,8 +52,26 @@ while True:
         asyncio.run(send_mail.send_confirm_email(
             subject="OTP Verified",
             email_to=obj['email'],
+            body={"email": obj['email']}
         )
         )
+        print("Email Sent!")
+
+    elif obj['type'] == 'SendEmailPasswordReset':
+        asyncio.run(send_mail.forgot_password_mail(
+            subject="OTP Verification",
+            email_to=obj['email'],
+            body={"otp": obj['otp']}
+        )
+        )
+        print("Email Sent!")
+
+    elif obj['type'] == 'VerifiedEmailPasswordReset':
+        asyncio.run(send_mail.reset_password_success(
+            subject="Password Changed Successfully!",
+            email_to=obj['email'],
+            body={"email": obj['email']}
+        ))
         print("Email Sent!")
 
     else:

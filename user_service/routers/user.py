@@ -9,7 +9,7 @@ from typing import List
 from . import otps
 import uuid
 import asyncio
-
+from roles import *
 
 router = APIRouter(
     prefix='/user',
@@ -41,13 +41,16 @@ async def register(request: schemas.UserPhone,
     else:
         new_user = models.User(id=str(uuid.uuid4()),
                                phone=request.phone,
-                               password=Hash.bcrypt(request.password))
+                               password=Hash.bcrypt(request.password),
+                               role="U",
+                               liked_by=[],
+                               friends=[])
 
     await asyncio.sleep(1)
 
     try:
         otps.send_otp(type="Phone", recipient_id=new_user.id,
-                      db=db)
+                      db=db, email=new_user.email)
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail=f"Error occured due to {e}")
@@ -105,7 +108,9 @@ async def update_email(id,
 
 
 @router.get('/', response_model=List[schemas.ShowIdUser])
-async def all(db: Session = Depends(database.get_db), current_user: schemas.User = Depends(get_current_user)):
+async def all(db: Session = Depends(database.get_db),
+              dependencies=Depends(allow_create_resource),
+              ):
     objects = db.query(models.User).all()
     await asyncio.sleep(0.5)
     return objects
@@ -188,3 +193,101 @@ async def show(id,
                             detail=f"User with the id {id} not found")
     await asyncio.sleep(0.5)
     return object
+
+
+@router.get('/userdetails/{id}', status_code=200, response_model=schemas.ShowUserDetails)
+async def show_userdetail(id,
+                          db: Session = Depends(get_db),
+                          current_user: schemas.User = Depends(get_current_user)):
+
+    object = db.query(models.User).filter(
+        models.User.id == id).first()
+    if not object:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail=f"User with the id {id} not found")
+    await asyncio.sleep(0.5)
+    return object
+
+
+@router.get('/userimages/{id}', status_code=200, response_model=schemas.ShowImageList)
+async def show_userimages(id,
+                          db: Session = Depends(get_db),
+                          current_user: schemas.User = Depends(get_current_user)):
+
+    object = db.query(models.User).filter(
+        models.User.id == id).first()
+    if not object:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail=f"User with the id {id} not found")
+    await asyncio.sleep(0.5)
+    return object
+
+
+@router.get('/userlocation/{id}', status_code=200, response_model=schemas.ShowUserLocation)
+async def show_userlocation(id,
+                            db: Session = Depends(get_db),
+                            current_user: schemas.User = Depends(get_current_user)):
+
+    object = db.query(models.User).filter(
+        models.User.id == id).first()
+    if not object:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail=f"User with the id {id} not found")
+    await asyncio.sleep(0.5)
+    return object
+
+
+@router.get('/friendlist/{id}', status_code=200, response_model=schemas.Friends)
+async def show_friendslist(id,
+                           db: Session = Depends(get_db),
+                           current_user: schemas.User = Depends(get_current_user)):
+
+    object = db.query(models.User).filter(
+        models.User.id == id).first()
+    if not object:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail=f"User with the id {id} not found")
+    await asyncio.sleep(0.5)
+    return object
+
+
+@router.get('/likelist/{id}', status_code=200, response_model=schemas.Likes)
+async def show_likeslist(id,
+                         db: Session = Depends(get_db),
+                         user: schemas.User = Depends(get_current_user)):
+
+    object = db.query(models.User).filter(
+        models.User.id == id).first()
+    if not object:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail=f"User with the id {id} not found")
+    await asyncio.sleep(0.5)
+    return object
+
+
+@router.delete('delete/friend/{}', status_code=200)
+async def delete_friend(id,
+                        request: schemas.DeleteFriends,
+                        db: Session = Depends(get_db),
+                        user: schemas.User = Depends(get_current_user)):
+
+    object = db.query(models.User).filter(
+        models.User.id == user['user_id']).first()
+    if not object:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail=f"User with the id not found")
+    obj = object.friends
+
+    await asyncio.sleep(0.5)
+
+    if user['user_id'] not in obj:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail=f"you are not friends with this user!")
+
+    length = len(obj)
+    for i in range(length):
+        if obj[i] == request.friend_id:
+            obj[i].delete(synchronize_session=False)
+            db.commit()
+
+    return 'Deleted SuccessFully!'

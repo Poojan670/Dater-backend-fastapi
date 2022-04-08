@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
-import models
-import schemas
+from .. import models
+from .. import schemas
 from fastapi import status, HTTPException, UploadFile, File
 import uuid
 

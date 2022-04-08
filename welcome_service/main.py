@@ -1,8 +1,10 @@
 from fastapi import FastAPI, File
 
-import models
-from database import engine
-from routers import welcome, image_welcome
+from . import models
+from .database import engine
+# from database import engine
+# from .database import engine
+from .routers import welcome, image_welcome
 
 app = FastAPI()
 
