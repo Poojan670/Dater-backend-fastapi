@@ -8,10 +8,10 @@ from database import engine, SessionLocal
 from routers import (
     user, login,
     userdetail, otps,
-    images, google,
+    google,
     password, location,
     friendrequest, report,
-    like
+    like, image, sharing
 )
 from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.openapi.utils import get_openapi
@@ -63,7 +63,8 @@ async def startup_event():
                                     is_phone_verified=True,
                                     is_email_verified=True,
                                     role="A",
-                                    friends=[])
+                                    friends=[],
+                                    liked_by=[])
                 db.add(admin)
                 db.commit()
                 db.refresh(admin)
@@ -79,11 +80,12 @@ app.include_router(user.router)
 app.include_router(password.router)
 app.include_router(userdetail.router)
 app.include_router(otps.router)
-app.include_router(images.router)
+app.include_router(image.router)
 app.include_router(location.router)
 app.include_router(friendrequest.router)
 app.include_router(report.router)
 app.include_router(like.router)
+app.include_router(sharing.router)
 
 
 async def get_user(request: Request) -> Optional[dict]:

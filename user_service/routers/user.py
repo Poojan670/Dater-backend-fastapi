@@ -62,7 +62,7 @@ async def register(request: schemas.UserPhone,
     print(new_user.id)
 
     return {
-        "id": new_user.id,
+        "user_id": new_user.id,
         "phone": new_user.phone,
         "password": new_user.password
     }

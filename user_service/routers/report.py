@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
 import database
@@ -21,14 +22,26 @@ async def report_user(request: schemas.ReportBase,
 
     userCheck = db.query(models.User).filter(
         models.User.id == request.report_to_id).first()
-    if userCheck is None:
+    if request.report_to_id == user['user_id']:
+        raise HTTPException(
+            status_code=400, detail=f"You can't report yourself!")
+    elif userCheck is None:
         raise HTTPException(status_code=400, detail=f"User not Found!")
     report = models.ReportUser(uuid.uuid4(),
                                report_by_id=user['user_id'],
                                report_to_id=request.report_to_id,
                                report_reason=request.report_reason
                                )
-    await asyncio.sleep(0.5)
+    if userCheck.report_count > 20:
+        userCheck.is_suspended = True
+        userCheck.suspended_count += 1
+        userCheck.suspend_timestamp = datetime.now() + timedelta(days=2)
+        db.commit()
+    else:
+        userCheck.report_count += 1
+        db.commit()
+
+    await asyncio.sleep(0.25)
 
     db.add(report)
     db.commit()

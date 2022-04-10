@@ -1,3 +1,4 @@
+from ast import Delete
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
 import models
@@ -5,6 +6,7 @@ import database
 import schemas
 from .oauth2 import get_current_user
 import uuid
+from psycopg2 import connect
 
 router = APIRouter(
     prefix='/friend/request',
@@ -19,6 +21,10 @@ class SendRequest(schemas.BaseModel):
 
 class ShowRequest(schemas.BaseModel):
     id: str
+
+
+class DeleteFriend(schemas.BaseModel):
+    friend_id: str
 
 
 @router.post('send/', status_code=200)
@@ -86,18 +92,39 @@ async def accept_friend_request(id,
         sender = db.query(models.User).filter(
             models.User.id == sender_id).first()
 
-        if receiver.friends is not []:
-            receiver.friends = []
-        if sender.friends is not []:
-            sender.friends = []
+        # conn = connect('dbname=user_fastapi')
+        # cur = conn.cursor()
+        # stmt = 'UPDATE user SET example_value=%s'
+        # a = receiver.friends.append(str(sender_id))
+        # b = sender.friends.append(str(user["user_id"]))
+        # new_values = [a, b]
+        # cur.execute(stmt, (new_values,))
 
-        receiver.friends.append(str(sender_id))
+        # conn.commit()
+        # if receiver.friends == []:
+        #     receiver.friends = []
+        # else:
+        #     receiver.friends = [str(receiver.friends)]
 
-        sender.friends.append(str(user["user_id"]))
+        # if sender.friends == []:
+        #     sender.friends = []
+        # else:
+        #     sender.friends = [str(sender.friends)]
+
+        mylist = list(receiver.friends)
+        mylist.append(str(sender_id))
+
+        receiver.friends = mylist
+
+        mylist2 = list(sender.friends)
+        mylist2.append(str(user["user_id"]))
+
+        sender.friends = mylist2
 
         db.commit()
 
         print(receiver.friends)
+        print(sender.friends)
 
         db.delete(friend_request)
         db.commit()
@@ -106,3 +133,42 @@ async def accept_friend_request(id,
     else:
         raise HTTPException(
             status_code=404, detail="Friend Request not Accepted!")
+
+
+@router.delete('/delete', status_code=200)
+async def delete_friend(request: DeleteFriend,
+                        db: Session = Depends(get_db),
+                        user: schemas.User = Depends(get_current_user)):
+
+    userCheck = db.query(models.User).filter(
+        models.User.id == user["user_id"]).first()
+
+    if userCheck is None:
+        raise HTTPException(status_code=400, detail=f"User Not Found!")
+    elif request.friend_id is None or request.friend_id == "":
+        raise HTTPException(
+            status_code=400, detail="Field cant be left Blank!")
+
+    friendCheck = db.query(models.User).filter(
+        models.User.id == request.friend_id).first()
+
+    if friendCheck is None:
+        raise HTTPException(status_code=400, detail="User Not Found!")
+
+    friends_list = list(userCheck.friends)
+    length = len(friends_list)
+    count = 0
+    for i in range(length):
+        a = friends_list[i]
+        if a == request.friend_id:
+            count = 1
+            friends_list.pop(a)
+    if count == 0:
+        raise HTTPException(
+            status_code=400, detail="You are not friends with this user!")
+
+    userCheck.friends = friends_list
+
+    db.commit()
+
+    return "Friend Removed Successfully !"

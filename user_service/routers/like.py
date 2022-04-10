@@ -19,7 +19,7 @@ class Like(BaseModel):
 
 
 @router.post('/', status_code=200)
-def like_user(request: Like,
+async def like_user(request: Like,
               db: Session = Depends(database.get_db),
               user: schemas.User = Depends(get_current_user)):
 

@@ -78,13 +78,13 @@ class ShowIdUserDetails(BaseModel):
 
 
 class ImageBase(BaseModel):
-    user_image_id: str
+    user_id: str
 
 
 class ImageRetrieve(BaseModel):
     id: str
-    image: str
-    user_image_id: str
+    image_url: str
+    user_id: str
 
     class Config():
         orm_mode = True
@@ -99,7 +99,7 @@ class ShowImageId(BaseModel):
 
 class Image(BaseModel):
     id: str
-    image: str
+    image_url: str
 
     class Config():
         orm_mode = True
@@ -279,5 +279,6 @@ class VerifyOTP(BaseModel):
 class OTPList(VerifyOTP):
     otp_failed_count: str
 
+
 class DeleteFriends(BaseModel):
-    friend_id : str
+    friend_id: str

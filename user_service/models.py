@@ -48,10 +48,18 @@ class User(Base):
     )
 
     friends = Column(ARRAY(String))
-    
+
     likes_count = Column(Integer, default=0)
 
     liked_by = Column(ARRAY(String))
+
+    report_count = Column(Integer, default=0)
+
+    is_suspended = Column(Boolean, default=False)
+
+    suspend_timestamp = Column(DateTime, nullable=True)
+
+    suspended_count = Column(Integer, default=0)
 
     user_details = relationship("UserDetails", back_populates="user")
 
@@ -125,11 +133,15 @@ class ImagesModel(Base):
     id = Column('id', Text, default=lambda: str(
         uuid.uuid4()), primary_key=True)
 
-    image = Column(String)
+    image_url = Column(String)
 
-    user_image_id = Column(String, ForeignKey("user.id"))
+    user_id = Column(String, ForeignKey("user.id"))
 
     user_images = relationship("User", back_populates="image_user")
+
+    time_created = Column(DateTime(timezone=True), server_default=func.now())
+
+    time_updated = Column(DateTime(timezone=True), onupdate=func.now())
 
 
 class UserLocation(Base):
@@ -190,20 +202,21 @@ class ReportUser(Base):
 
     time_created = Column(DateTime(timezone=True), server_default=func.now())
 
+
 class LikeModel(Base):
-    
+
     __tablename__ = 'userlikes'
 
     id = Column(String(100), primary_key=True)
-    
+
     like = Column(Boolean, default=False)
-    
+
     liked_by_id = Column(String, ForeignKey("user.id"), nullable=False)
-    
+
     liked_by = relationship("User", foreign_keys=[liked_by_id])
-    
+
     liked_to_id = Column(String, ForeignKey("user.id"), nullable=False)
-    
+
     liked_to = relationship("User", foreign_keys=[liked_to_id])
-    
+
     time_created = Column(DateTime(timezone=True), server_default=func.now())

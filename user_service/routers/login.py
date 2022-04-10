@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.responses import Response, RedirectResponse
 from pydantic import BaseModel
+from datetime import datetime
 import models
 import database
 from sqlalchemy.orm import Session
@@ -8,6 +9,8 @@ from hashing import Hash
 from routers import token
 from fastapi.security import OAuth2PasswordRequestForm
 from schemas import BaseModel
+import jwt
+
 
 router = APIRouter(
     prefix='/user',
@@ -23,12 +26,21 @@ def login(request: OAuth2PasswordRequestForm = Depends(),
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                             detail=f"Invalid Credentials")
-    if not Hash.verify(request.password, user.password):
+    elif not Hash.verify(request.password, user.password):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                             detail=f"Incorrect Password")
-    if user.is_phone_verified == False:
+    elif user.is_phone_verified == False:
         raise HTTPException(status_code=status.HTTP_405_METHOD_NOT_ALLOWED,
                             detail="You are not a verified user!")
+
+    elif user.is_suspended == True and user.suspend_timestamp > datetime.now():
+        raise HTTPException(status_code=status.HTTP_405_METHOD_NOT_ALLOWED,
+                            detail=f"You've been suspended till {user.sussuspend_timestamp} due to too many reports!!")
+
+    elif user.suspended_count >= 5:
+        raise HTTPException(status_code=status.HTTP_405_METHOD_NOT_ALLOWED,
+                            detail="You're permanently banned, Please contact the company or admin staffs!")
+
     access_token = token.create_access_token(data={"sub": user.phone,
                                                    "user_id": user.id,
                                                    "role": user.role})
@@ -54,9 +66,6 @@ def refresh_token(request: TokenSchema = Depends()):
     return {
         "access_token": new_access_token
     }
-
-
-import jwt
 
 
 @router.get("/logout")
