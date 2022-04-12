@@ -31,7 +31,7 @@ social_media_choices = choice([
 
 
 class UserDetailsBase(BaseModel):
-    first_name: constr(min_length=5, max_length=15)
+    first_name: constr(min_length=2, max_length=15)
     middle_name: str
     last_name: constr(min_length=5, max_length=15)
     age: int
@@ -48,7 +48,7 @@ class UserDetailsBase(BaseModel):
 
     profession: str
 
-    living_in: str
+    hobbies: str
 
 
 class UserDetails(UserDetailsBase):
@@ -128,6 +128,13 @@ class AllLocation(BaseModel):
         orm_mode = True
 
 
+class LocationFilter(BaseModel):
+    user_id: str
+
+    class Config():
+        orm_mode = True
+
+
 class ReportBase(BaseModel):
     report_to_id: str
     report_reason: str
@@ -148,7 +155,7 @@ class LikesList(BaseModel):
 
 
 class Likes(BaseModel):
-    likes: List[LikesList] = []
+    likes: Optional[List[LikesList]] = []
 
     class Config():
         orm_mode = True
@@ -196,6 +203,20 @@ class UserPhone(UserPhoneBase):
 
 
 class User(UserBase):
+
+    class Config():
+        orm_mode = True
+
+
+class UserDetailsFilter(BaseModel):
+    user_id: str
+
+    class Config():
+        orm_mode = True
+
+
+class UserLikedFilter(BaseModel):
+    likes: Optional[list] = None
 
     class Config():
         orm_mode = True

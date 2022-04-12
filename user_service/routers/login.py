@@ -52,6 +52,37 @@ def login(request: OAuth2PasswordRequestForm = Depends(),
             "token_type": "bearer"}
 
 
+@router.get('/login/email/{email}', include_in_schema=False)
+def email_login(email: str,
+                db: Session = Depends(database.get_db)):
+    user = db.query(models.User).filter(
+        models.User.email == email).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail=f"Invalid Credentials")
+    elif user.is_email_verified == False:
+        raise HTTPException(status_code=status.HTTP_405_METHOD_NOT_ALLOWED,
+                            detail="You are not a verified user!")
+
+    elif user.is_suspended == True and user.suspend_timestamp > datetime.now():
+        raise HTTPException(status_code=status.HTTP_405_METHOD_NOT_ALLOWED,
+                            detail=f"You've been suspended till {user.sussuspend_timestamp} due to too many reports!!")
+
+    elif user.suspended_count >= 5:
+        raise HTTPException(status_code=status.HTTP_405_METHOD_NOT_ALLOWED,
+                            detail="You're permanently banned, Please contact the company or admin staffs!")
+
+    access_token = token.create_access_token(data={"sub": user.email,
+                                                   "user_id": user.id,
+                                                   "role": user.role})
+    refresh_token = token.create_refresh_token(data={"sub": user.email,
+                                                     "user_id": user.id,
+                                                     "role": user.role})
+    return {"access_token": access_token,
+            "refresh_token": refresh_token,
+            "token_type": "bearer"}
+
+
 class TokenSchema(BaseModel):
     refresh_token: str
 

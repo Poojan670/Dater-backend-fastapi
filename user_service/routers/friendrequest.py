@@ -1,4 +1,3 @@
-from ast import Delete
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
 import models
@@ -6,7 +5,6 @@ import database
 import schemas
 from .oauth2 import get_current_user
 import uuid
-from psycopg2 import connect
 
 router = APIRouter(
     prefix='/friend/request',
@@ -91,25 +89,6 @@ async def accept_friend_request(id,
 
         sender = db.query(models.User).filter(
             models.User.id == sender_id).first()
-
-        # conn = connect('dbname=user_fastapi')
-        # cur = conn.cursor()
-        # stmt = 'UPDATE user SET example_value=%s'
-        # a = receiver.friends.append(str(sender_id))
-        # b = sender.friends.append(str(user["user_id"]))
-        # new_values = [a, b]
-        # cur.execute(stmt, (new_values,))
-
-        # conn.commit()
-        # if receiver.friends == []:
-        #     receiver.friends = []
-        # else:
-        #     receiver.friends = [str(receiver.friends)]
-
-        # if sender.friends == []:
-        #     sender.friends = []
-        # else:
-        #     sender.friends = [str(sender.friends)]
 
         mylist = list(receiver.friends)
         mylist.append(str(sender_id))

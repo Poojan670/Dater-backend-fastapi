@@ -11,7 +11,8 @@ from routers import (
     google,
     password, location,
     friendrequest, report,
-    like, image, sharing
+    like, image, sharing,
+    match,
 )
 from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.openapi.utils import get_openapi
@@ -64,7 +65,8 @@ async def startup_event():
                                     is_email_verified=True,
                                     role="A",
                                     friends=[],
-                                    liked_by=[])
+                                    liked_by=[],
+                                    likes=[])
                 db.add(admin)
                 db.commit()
                 db.refresh(admin)
@@ -86,6 +88,7 @@ app.include_router(friendrequest.router)
 app.include_router(report.router)
 app.include_router(like.router)
 app.include_router(sharing.router)
+app.include_router(match.router)
 
 
 async def get_user(request: Request) -> Optional[dict]:

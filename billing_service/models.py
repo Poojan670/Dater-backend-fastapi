@@ -1,57 +1,62 @@
 import uuid
 from database import Base
-from sqlalchemy import Column, String, Text, DateTime
+from sqlalchemy import Column, ForeignKey, String, Text, DateTime, Integer, Boolean, Date
 from sqlalchemy.orm import relationship
 from pydantic import BaseModel
 from sqlalchemy.sql import func
+from datetime import date
+from typing import List
 
 
-class PremiumBase(BaseModel):
-    header: str
-
-    sub_title: str
-    sub_description: str
-    footer: str
-    footer_description: str
-
-
-class PremiumShowId(BaseModel):
+class UserRetrieve(BaseModel):
     id: str
+    is_expired: bool
+    bill: str
+    user_id: str
+    date_created: date
 
+
+class ShowUserId(BaseModel):
+    id: str
+    
     class Config():
-        orm_mode = True
+        orm_mode= True
 
-
-class PremiumRetrieve(BaseModel):
-    header: str
-    img_url: str
-    sub_title: str
-    sub_description: str
-    footer: str
-    footer_description: str
-
+class ShowBilling(BaseModel):
+    user: List[UserRetrieve] = []
+    
     class Config():
-        orm_mode = True
+        orm_mode=True
+    
+class BillingModel(Base):
 
+    __tablename__ = 'billing'
 
-class DaterPlusModel(Base):
-    __tablename__ = 'dater_plus'
-
-    id = Column('id', Text(length=36), default=lambda: str(
+    id = Column('id', Text, default=lambda: str(
         uuid.uuid4()), primary_key=True)
 
-    header = Column(String(30))
+    subscription_time_months = Column(Integer, default=6)
 
-    img_url = Column(String)
-
-    sub_title = Column(String(20))
-
-    sub_description = Column(Text)
-
-    footer = Column(String(30))
-
-    footer_description = Column(Text)
+    price = Column(Integer, default=10)
 
     time_created = Column(DateTime(timezone=True), server_default=func.now())
 
-    time_updated = Column(DateTime(timezone=True), onupdate=func.now())
+    user = relationship("UserModel", back_populates="billing")
+
+
+class UserModel(Base):
+
+    __tablename__ = 'userBilling'
+
+    id = Column('id', Text, default=lambda: str(
+        uuid.uuid4()), primary_key=True)
+
+    is_expired = Column(Boolean, default=False)
+
+    bill = Column(String, ForeignKey("billing.id"), nullable=False)
+
+    user_id = Column(String)
+
+    date_created = Column(Date, server_default=func.now())
+
+    billing = relationship("BillingModel", back_populates="user")

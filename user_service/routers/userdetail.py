@@ -56,7 +56,7 @@ def create_userdetail(request: schemas.UserDetails,
 
         profession=request.profession,
 
-        living_in=request.living_in,
+        hobbies=request.hobbies,
 
         user_id=current_user['user_id'],
     )

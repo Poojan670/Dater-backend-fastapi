@@ -44,9 +44,10 @@ async def register(request: schemas.UserPhone,
                                password=Hash.bcrypt(request.password),
                                role="U",
                                liked_by=[],
-                               friends=[])
+                               friends=[],
+                               likes=[])
 
-    await asyncio.sleep(1)
+    await asyncio.sleep(0.25)
 
     try:
         otps.send_otp(type="Phone", recipient_id=new_user.id,
@@ -162,7 +163,7 @@ async def update(id,
 
     else:
 
-        await asyncio.sleep(1)
+        await asyncio.sleep(0.25)
 
         try:
             object.first().is_phone_verified = True
@@ -251,43 +252,30 @@ async def show_friendslist(id,
     return object
 
 
-@router.get('/likelist/{id}', status_code=200, response_model=schemas.Likes)
-async def show_likeslist(id,
-                         db: Session = Depends(get_db),
-                         user: schemas.User = Depends(get_current_user)):
-
-    object = db.query(models.User).filter(
-        models.User.id == id).first()
-    if not object:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                            detail=f"User with the id {id} not found")
-    await asyncio.sleep(0.5)
-    return object
-
-
-@router.delete('delete/friend/{}', status_code=200)
-async def delete_friend(id,
-                        request: schemas.DeleteFriends,
+@router.delete('delete/friend/', status_code=200)
+async def delete_friend(request: schemas.DeleteFriends,
                         db: Session = Depends(get_db),
                         user: schemas.User = Depends(get_current_user)):
 
     object = db.query(models.User).filter(
-        models.User.id == user['user_id']).first()
-    if not object:
+        models.User.id == user['user_id'])
+    if not object.first():
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                             detail=f"User with the id not found")
-    obj = object.friends
+    obj = object.first().friends
+    frnlist = list(obj)
 
-    await asyncio.sleep(0.5)
-
-    if user['user_id'] not in obj:
+    if request.friend_id not in obj:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                             detail=f"you are not friends with this user!")
 
-    length = len(obj)
-    for i in range(length):
-        if obj[i] == request.friend_id:
-            obj[i].delete(synchronize_session=False)
-            db.commit()
+    frnlist.pop(request.friend_id)
+    db.commit()
 
-    return 'Deleted SuccessFully!'
+    # length = len(obj)
+    # for i in range(length):
+    #     if obj[i] == request.friend_id:
+    #         obj[i].delete(synchronize_session=False)
+    #         db.commit()
+
+    return 'Friend Removed SuccessFully!'

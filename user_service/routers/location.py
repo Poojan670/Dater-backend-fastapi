@@ -8,6 +8,7 @@ import roles
 from .oauth2 import get_current_user
 import uuid
 import asyncio
+from typing import Optional
 
 router = APIRouter(
     prefix='/user/location',
@@ -82,3 +83,16 @@ async def show(id,
                             detail=f"User with the id {id} not found")
     await asyncio.sleep(0.5)
     return object
+
+
+@router.get('/search', status_code=200, response_model=List[schemas.LocationFilter])
+async def get_all_user_location(location: Optional[str] = None,
+                                db: Session = Depends(database.get_db),
+                                user: schemas.User = Depends(get_current_user)):
+
+    objects = db.query(models.UserLocation)
+
+    if location:
+        objects = objects.filter(models.UserLocation.location_name == location)
+
+    return objects.all()

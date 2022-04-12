@@ -1,4 +1,3 @@
-from email.policy import default
 import uuid
 from database import Base
 from sqlalchemy import (Column, ForeignKey,
@@ -53,6 +52,8 @@ class User(Base):
 
     liked_by = Column(ARRAY(String))
 
+    likes = Column(ARRAY(String))
+
     report_count = Column(Integer, default=0)
 
     is_suspended = Column(Boolean, default=False)
@@ -99,7 +100,9 @@ class UserDetails(Base):
 
     profession = Column(String)
 
-    living_in = Column(String)
+    hobbies = Column(String)
+
+    time_created = Column(DateTime(timezone=True), server_default=func.now())
 
     user_id = Column(String, ForeignKey("user.id"))
 
@@ -207,7 +210,8 @@ class LikeModel(Base):
 
     __tablename__ = 'userlikes'
 
-    id = Column(String(100), primary_key=True)
+    id = id = Column('id', Text, default=lambda: str(
+        uuid.uuid4()), primary_key=True)
 
     like = Column(Boolean, default=False)
 

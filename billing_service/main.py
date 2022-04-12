@@ -1,133 +1,177 @@
-from fastapi import FastAPI, Depends, File, UploadFile, Response, HTTPException, status, Form
+from fastapi import FastAPI, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
-from database import get_db, engine
+from database import get_db, engine, SessionLocal
 import models
-import shutil
 from typing import List
-import asyncio
+from enum import Enum
+import jwt
+import requests as req
 import os
 
 app = FastAPI()
 
 models.Base.metadata.create_all(engine)
 
+SECRET_KEY = os.getenv("SECRET_KEY")
+ALGORITHM = os.getenv("ALGORITHM")
 
-@app.post('/', status_code=200)
-async def dater_plus_page(
-        header: str = Form(...),
-        sub_title: str = Form(...),
-        sub_description: str = Form(...),
-        footer: str = Form(...),
-        footer_description: str = Form(...),
-        file: UploadFile = File(...),
-        db: Session = Depends(get_db)):
 
-    a = file.filename
-    file_location = f"media/{a}"
+@app.on_event("startup")
+async def startup_event():
+    with SessionLocal() as db:
+        obj = db.query(models.BillingModel.id == '1').first()
+        if obj is None:
+            try:
+                id = ['1', '2', '3']
+                subscription_time_months = [3, 6, 1]
+                price = [14, 10, 20]
+                for i in range(3):
+                    billing = models.BillingModel(
+                        id=id[i],
+                        subscription_time_months=subscription_time_months[i],
+                        price=price[i])
+                    db.add(billing)
+                    db.commit()
+                    db.refresh(billing)
+                print("Billing Models Created Successfully!")
+            except Exception as e:
+                print(str(e))
+        else:
+            print("Okay!")
+
+
+class BillingType(str, Enum):
+    PlanA = "PlanA"
+    PlanB = "PlanB"
+    PlanC = "PlanC"
+
+
+@app.post('/epay/main', status_code=200)
+async def esewa_payment(request_id, amount):
+    url = "https://uat.esewa.com.np/epay/main"
+    d = {'amt': 100,
+         'pdc': 0,
+         'psc': 0,
+         'txAmt': 0,
+         'tAmt': 100,
+         'pid': 'ee2c3ca1-696b-4cc5-a6be-2c40d929d453',
+         'scd': 'EPAYTEST',
+         'su': 'http://merchant.com.np/page/esewa_payment_success?q=su',
+         'fu': 'http://merchant.com.np/page/esewa_payment_failed?q=fu'}
+    resp = req.post(url, d)
+
+
+@app.post('/billing', status_code=200, description="User Billing!")
+async def post_billing(check: Request,
+                       billing_plan: BillingType,
+                       db: Session = Depends(get_db)):
 
     try:
-        with open(file_location, "wb+") as file_object:
-            shutil.copyfileobj(file.file, file_object)
+        token = check.headers.get('Authorization')
+        if token is None or token == "":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, detail=f"Not Authenticated!")
 
-    except FileNotFoundError:
-        os.mkdir(os.path.join("media"))
+        token_data = token.split(" ")
+        decode = jwt.decode(
+            token_data[1], SECRET_KEY, algorithms=['HS256'])
+        user_id = decode['user_id']
+        role = decode['role']
+    except jwt.ExpiredSignatureError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=f"{e}")
+    except jwt.InvalidTokenError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=f"{e}")
 
-        with open(file_location, "wb+") as file_object:
-            shutil.copyfileobj(file.file, file_object)
+    if billing_plan == "PlanA":
+        obj = models.UserModel(user_id=user_id,
+                               bill="1",
+                               )
+    elif billing_plan == "PlanB":
+        obj = models.UserModel(user_id=user_id,
+                               bill="2",
+                               )
 
-    dater = models.DaterPlusModel(
-        header=header,
-        sub_title=sub_title,
-        sub_description=sub_description,
-        footer=footer,
-        footer_description=footer_description,
-        img_url=file_location
-    )
+    elif billing_plan == "PlanC":
+        obj = models.UserModel(user_id=user_id,
+                               bill="2",
+                               )
 
-    await asyncio.sleep(0.5)
+    esewa_payment(user_id, obj.bill)
 
-    db.add(dater)
+    db.add(obj)
     db.commit()
-    db.refresh(dater)
+    db.refresh(obj)
 
-    return dater
-
-
-@app.get("/all", response_model=List[models.PremiumShowId])
-async def all_images(db: Session = Depends(get_db)):
-    objects = db.query(models.DaterPlusModel).all()
-    await asyncio.sleep(0.5)
-    return objects
+    return "You have successfully subscribed to {billing_plan} subscription!"
 
 
-@app.get("/{id}", status_code=200, response_model=models.PremiumRetrieve)
-async def retrieve_image(id,
-                         response: Response,
-                         db: Session = Depends(get_db)):
+@app.get('/billing/{id}', status_code=200, description="User Billing Retrieve!", response_model=models.UserRetrieve)
+async def get_billing(id,
+                      check: Request,
+                      db: Session = Depends(get_db)):
 
-    object = db.query(models.DaterPlusModel).filter(
-        models.DaterPlusModel.id == id).first()
+    try:
+        token = check.headers.get('Authorization')
+        if token is None or token == "":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, detail=f"Not Authenticated!")
+        token_data = token.split(" ")
+        decode = jwt.decode(
+            token_data[1], SECRET_KEY, algorithms=['HS256'])
+    except jwt.ExpiredSignatureError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=f"{e}")
+    except jwt.InvalidTokenError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=f"{e}")
+
+    obj = db.query(models.UserModel.id == id).first()
+
+    if obj is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not Found!!")
+
+    return obj
+
+
+@app.get('/billing/all', status_code=200, description="See All User Billings!", response_model=List[models.ShowUserId])
+async def show_all_billings(check: Request,
+                            db: Session = Depends(get_db)):
+    try:
+        token = check.headers.get('Authorization')
+        if token is None or token == "":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, detail=f"Not Authenticated!")
+
+        token_data = token.split(" ")
+        decode = jwt.decode(
+            token_data[1], SECRET_KEY, algorithms=['HS256'])
+        role = decode['role']
+    except jwt.ExpiredSignatureError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=f"{e}")
+    except jwt.InvalidTokenError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=f"{e}")
+
+    object = db.query(models.UserModel).all()
+
+    if role == "Admin":
+        return object
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=f"Not Allowed!")
+
+
+@app.get('/{id}', status_code=200, response_model=models.ShowBilling)
+async def show_billings(id,
+                        db: Session = Depends(get_db)):
+
+    object = db.query(models.BillingModel).filter(
+        models.BillingModel.id == id).first()
     if not object:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                            detail=f"Image Object with the id {id} not found")
-    await asyncio.sleep(0.5)
+                            detail=f"Billing Model with the id {id} not found")
     return object
-
-
-@app.delete('/{id}', status_code=status.HTTP_204_NO_CONTENT)
-async def destroy(id,
-                  db: Session = Depends(get_db)
-                  ):
-    object = db.query(models.DaterPlusModel).filter(
-        models.DaterPlusModel.id == id)
-
-    if not object.first():
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=f"Image Object with this {id} not found")
-
-    await asyncio.sleep(0.5)
-
-    object.delete(synchronize_session=False)
-    db.commit()
-    return 'Deleted Successfully'
-
-
-@app.put('/{id}', status_code=status.HTTP_202_ACCEPTED)
-async def update_image(id,
-                       header: str = Form(...),
-                       sub_title: str = Form(...),
-                       sub_description: str = Form(...),
-                       footer: str = Form(...),
-                       footer_description: str = Form(...),
-                       db: Session = Depends(get_db),
-                       file: UploadFile = File(...)
-                       ):
-
-    object = db.query(models.DaterPlusModel).filter(
-        models.DaterPlusModel.id == id)
-    if not object.first():
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=f"Image Object with this {id} not found")
-
-    await asyncio.sleep(0.5)
-
-    try:
-        file_location = f"media/{file.filename}"
-    except:
-        os.mkdir(os.path.join("media"))
-
-    with open(file_location, "wb+") as file_object:
-        shutil.copyfileobj(file.file, file_object)
-
-    object.update(header=header,
-                  sub_title=sub_title,
-                  sub_description=sub_description,
-                  footer=footer,
-                  footer_description=footer_description,
-                  img_url=file_location)
-
-    db.commit()
-
-    await asyncio.sleep(0.5)
-
-    return 'Updated Successfully'
