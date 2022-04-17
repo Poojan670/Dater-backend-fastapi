@@ -12,7 +12,7 @@ from routers import (
     password, location,
     friendrequest, report,
     like, image, sharing,
-    match,
+    match, facebook,
 )
 from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.openapi.utils import get_openapi
@@ -78,6 +78,7 @@ async def startup_event():
 
 app.include_router(login.router)
 app.include_router(google.router)
+app.include_router(facebook.router)
 app.include_router(user.router)
 app.include_router(password.router)
 app.include_router(userdetail.router)
@@ -116,4 +117,10 @@ async def get_documentation(request: Request, user: Optional[dict] = Depends(get
 
 if __name__ == '__main__':
     import uvicorn
-    uvicorn.run(app, host='127.0.0.1', port=8000, log_level='debug')
+    uvicorn.run("main:app",
+                host='127.0.0.1',
+                port=8000,
+                log_level='debug',
+                reload=True,
+                ssl_keyfile="./localhost+2-key.pem",
+                ssl_certfile="./localhost+2.pem")

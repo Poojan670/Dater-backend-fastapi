@@ -107,7 +107,7 @@ async def unlike_user(id,
 
     except Exception as e:
         raise HTTPException(
-            status_code=404, detail="Error occured due to {}".format(str(e)))
+            status_code=400, detail="Error occured due to {}".format(str(e)))
 
     object.delete(synchronize_session=False)
     db.commit()

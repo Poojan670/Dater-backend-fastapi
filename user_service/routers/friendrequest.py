@@ -102,9 +102,6 @@ async def accept_friend_request(id,
 
         db.commit()
 
-        print(receiver.friends)
-        print(sender.friends)
-
         db.delete(friend_request)
         db.commit()
 
